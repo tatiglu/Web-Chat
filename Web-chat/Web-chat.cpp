@@ -3,6 +3,7 @@
 #include <vector>
 #include <thread>
 #include <winsock2.h>
+#include <ws2tcpip.h>
 
 #pragma comment(lib, "ws2_32.lib")
 
@@ -38,15 +39,28 @@ int main() {
     sockaddr_in serverAddr;
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_port = htons(5555);
-    serverAddr.sin_addr.S_un.S_addr = INADDR_ANY;
+    serverAddr.sin_addr.s_addr = htonl(INADDR_ANY);
 
     if (bind(listeningSocket, (sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
         std::cerr << "Bind failed." << std::endl;
         return 1;
     }
 
-    if (listen(listeningSocket, SOMAXCONN) == SOCKET_ERROR) {
+    if (listen(listeningSocket, 5) == SOCKET_ERROR) {
         std::cerr << "Listen failed." << std::endl;
+        return 1;
+    }
+
+    sockaddr_in target;
+
+    target.sin_family = AF_INET;           // семество адресов - Интернет
+    target.sin_port = htons(5001);        // порт сервера
+    target.sin_addr.s_addr = inet_pton(AF_INET, "127.0.0.1", &serverAddr.sin_addr);  // IP-адрес сервера
+    if (connect(listeningSocket, reinterpret_cast<const sockaddr*>(&target), sizeof(target)) == SOCKET_ERROR)
+    {
+        std::cerr << "Connection error." << std::endl;
+        closesocket(listeningSocket);
+        WSACleanup();
         return 1;
     }
 
